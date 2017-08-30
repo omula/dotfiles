@@ -1,0 +1,254 @@
+#!/bin/bash
+
+# ------------------------------------------------------------------------------
+# Colors and formatting options
+#
+
+# only assign colors if terminal is present
+if $(tty -s); then
+    resetFormatting="$(tput sgr0)"
+    bold="$(tput bold)"
+
+    # regular colors
+    black="$(tput setaf 0)"
+    red="$(tput setaf 1)"
+    green="$(tput setaf 2)"
+    yellow="$(tput setaf 3)"
+    blue="$(tput setaf 4)"
+    magenta="$(tput setaf 5)"
+    cyan="$(tput setaf 6)"
+    white="$(tput setaf 7)"
+
+    # High intensity colors
+    blackH="${bold}${black}"
+    redH="${bold}${red}"
+    greenH="${bold}${green}"
+    yellowH="${bold}${yellow}"
+    blueH="${bold}${blue}"
+    magentaH="${bold}${magenta}"
+    cyanH="${bold}${cyan}"
+    whiteH="${bold}${white}"
+
+    # background colors
+    blackB="$(tput setab 0)"
+    redB="$(tput setab 1)"
+    greenB="$(tput setab 2)"
+    yellowB="$(tput setab 3)"
+    blueB="$(tput setab 4)"
+    magentaB="$(tput setab 5)"
+    cyanB="$(tput setab 6)"
+    whiteB="$(tput setab 7)"
+fi
+
+# ------------------------------------------------------------------------------
+# Aliases for host and user names
+#
+
+PRIVATES="$HOME/.bash_privates"
+if [[ -f "$PRIVATES" && -r "$PRIVATES" ]]; then
+    source "$PRIVATES" && USE_PRIVATES=true
+else
+    USE_PRIVATES=false
+fi
+
+# re-implement the following in $PRIVATES for sensitive data
+if [[ $USE_PRIVATES == false ]]; then
+    # Provide user name alias for prompt
+    __user_alias() {
+        case `whoami` in
+            root)
+                echo -n "###"
+                ;;
+            foo)
+                echo -n "bar"
+                ;;
+            *)
+                echo -n ""
+                ;;
+        esac
+    }
+
+    # Provide host tags 
+    case `hostname` in
+        *.foo.bar)
+            HOST_TAGS=":server:"
+            ;;
+        larry* | curly* | moe*)
+            HOST_TAGS=":workstation:"
+            ;;
+        *)
+            HOST_TAGS=""
+            ;;
+    esac
+    export HOST_TAGS
+
+    # Provide host alias names
+    case `hostname` in
+        foo)
+            HOST_ALIAS="bar"
+            ;;
+
+        baz)
+            HOST_ALIAS="blah"
+            ;;
+    esac
+
+    [ -n "${HOST_ALIAS}" ] && export HOST_ALIAS
+
+    # Select host name color based on HOST_TAGS environment variable
+    case ${HOST_TAGS} in
+        *:server:*)
+            HOST_COLOR=${black}${redB}
+            ;;
+        *:workstation:*)
+            HOST_COLOR=${blue}
+            ;;
+        *)
+            HOST_COLOR=${white}${blackB}
+            ;;
+    esac
+fi
+
+# ------------------------------------------------------------------------------
+# Bash PROMPT
+#
+
+
+function __prompt_date {
+    echo -n `date +%H:%M`
+}
+
+# Username or alias
+function __prompt_username {
+    if [[ "$(type -t __user_alias)" == "function" ]]; then
+        local user_alias=$(__user_alias)
+    fi
+    if [[ -n "$user_alias" ]]; then
+        echo -n "$user_alias"
+    else
+        echo -n "$(whoami | cut -c1-8)"
+    fi
+}
+
+# Hostname or alias
+function __prompt_hostname {
+   if [[ -n ${HOST_ALIAS} ]]; then
+       echo -n ${HOST_ALIAS}
+   else
+       echo -n "$(hostname -s | cut -c1-16)"
+   fi
+}
+
+# SSH agent indicator
+function __prompt_ssh_agent {
+    if [[ -n "${SSH_CLIENT}" ]] && [[ -n "${SSH_AUTH_SOCK}" ]] && [[ -e "${SSH_AUTH_SOCK}" ]]; then
+        echo -n "@"
+    fi
+}
+
+# SSH session session indicator
+function __prompt_ssh {
+    if [[ -n "$SSH_CLIENT" ]]; then
+        echo -n 'ssh'
+    fi
+}
+
+# Show version controlled repository status.
+# vcprompt is used if installed, otherwise __git_ps1 will be tried as well.
+# Install vcsprompt -> hg clone https://bitbucket.org/mitsuhiko/vcprompt
+export GIT_PS1_SHOWDIRTYSTATE="yes"
+export GIT_PS1_SHOWUPSTREAM="no"
+export GIT_PS1_SHOWUNTRACKEDFILES="yes"
+function __prompt_vcs {
+    if [[ $(which vcprompt 2>/dev/null) ]]; then
+        vcprompt -f " (%n:%b%m%u)"
+    elif [[ $(type -t __git_ps1) == "function" ]]; then
+        __git_ps1 " (%s)"
+    fi
+}
+
+
+
+# Support function to compactify a path
+# copied: http://stackoverflow.com/questions/3497885/code-challenge-bash-prompt-path-shortener
+function __dir_chomp {
+    local p=${1/#$HOME/\~} b s
+    # Remove [ and ] from strings
+    # (also, regular expression matching on [ ] below creates infinite recursion.)
+    p=${p//[/ }
+    p=${p//]/ }
+    # Remove multiple spaces, don't need them
+    p=${p//  / }
+    s=${#p}
+    while [[ $p != ${p//\/} ]] && (($s>$2))
+    do
+        p=${p#/}
+        [[ $p =~ \.?. ]]
+        b=${b:+${b}/}${BASH_REMATCH[0]}
+        p=${p#*/}
+        ((s=${#b}+${#p}))
+    done
+    #echo ${b/\/~/\~}${b+/}$p
+    echo ${b/\/~/\~}${b:+/}$p
+}
+
+# Compact version of current working directory
+function __prompt_pwd {
+    echo -n $(__dir_chomp  "$(pwd)" 40)
+}
+
+# Visual indicator of last exit code 
+function __prompt_last {
+  if [[ $EUID -eq 0 ]]; then
+      if [[ ${RET} = "0" ]]; then
+          echo -n "#"
+      else
+          echo -n '!!! #'
+      fi
+  else
+      if [[ ${RET} = "0" ]]; then
+          echo -n "\$"
+      else
+          echo -n '$%&!'
+      fi
+  fi
+}
+
+# Append the storage of exit code to prompt command
+if [[ $PROMPT_COMMAND =~ ^.*\;[[:space:]$'\n'$'\r']*$ ]]; then
+    PROMPT_COMMAND="${PROMPT_COMMAND%;*}"
+fi
+
+export PROMPT_COMMAND="export RET=\$?${PROMPT_COMMAND:+;${PROMPT_COMMAND}}"
+
+# Set up prompt
+function __prompt_activate {
+
+    # Set title in xterm*
+    case $TERM in
+        xterm*|rxvt*)
+            TITLEBAR='\[\033]0;\u@\h:\w\007\]'
+            ;;
+        *)
+            TITLEBAR=""
+            ;;
+    esac
+
+# Set the prompt 
+PS1="${TITLEBAR}\
+\[${redH}\]\$(__prompt_date)\[${resetFormatting}\] \
+\[${yellowH}\]\$(__prompt_username)\[${resetFormatting}\]\
+\[${magentaH}\]@\[${resetFormatting}\]\
+\[${HOST_COLOR}\]\$(__prompt_hostname)\[${resetFormatting}\]\
+\[${white}${magentaB}\]\$(__prompt_ssh_agent)\[${resetFormatting}\]\
+\[${black}${magentaB}\]\$(__prompt_ssh)\[${resetFormatting}\] \
+\[${blueH}\]\$(__prompt_pwd)\[${resetFormatting}\]\
+\[${greenH}\]\$(__prompt_vcs)\[${resetFormatting}\]\
+\[${magenta}\]\$(__prompt_last)\[${resetFormatting}\] "
+PS2='> '
+PS4='+ '
+}
+
+
+# Activate the prompt code
+__prompt_activate

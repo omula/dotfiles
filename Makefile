@@ -3,8 +3,8 @@ FULLDATE := $(date "+%Y%m%d")
 DOTFILES := $(shell pwd)
 OLDDOTFILES := ~/dotfiles_${DATE}               # old dotfiles backup directory
 
-all: vim vim_extras bash zsh git python
-.PHONY : vim vim_extras bash zsh git python
+all: vim vim_extras bash git python
+.PHONY : vim vim_extras bash git python
 
 vim:
 	rm -rf ~/.vimrc
@@ -19,11 +19,11 @@ vim_extras:
 
 bash:
 	rm -f ~/.bashrc
+	rm -f ~/.bash_ps1
+	rm -f ~/.bash_aliases
 	ln -s $(DOTFILES)/.bashrc ~/.bashrc
-
-zsh:
-	rm ~/.zshrc
-	ln -s $(DOTFILES)/.zshrc ~/.zshrc
+	ln -s $(DOTFILES)/.bashrc ~/.bash_ps1
+	ln -s $(DOTFILES)/.bash_aliases ~/.bash_aliases
 
 git:
 	rm -f ~/.gitconfig
@@ -33,4 +33,5 @@ python: pyenv
 
 pyenv:
 	test -d ~/.pyenv || \
-	git clone --quiet https://github.com/yyuu/pyenv.git ~/.pyenv
+	git clone --quiet https://github.com/yyuu/pyenv.git ~/.pyenv && \
+	git clone https://github.com/yyuu/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv

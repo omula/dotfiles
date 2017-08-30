@@ -44,9 +44,11 @@ export GIT_PS1_SHOWUPSTREAM="auto"
 
 if [ "$color_prompt" = yes ]; then
 	if type __git_ps1 > /dev/null 2>&1 ; then
-		PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[01;31m\]$(__git_ps1 "[%s]")\[\033[00m\]\$ '
+		#PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[01;31m\]$(__git_ps1 "[%s]")\[\033[00m\]\$ '
+		PS1='\[\033[00m\]\[\033[38;2;112;204;10m\]\u@\h\[\033[00m\]:\[\033[38;2;64;64;64m\]\w\[\033[00m\]\[\033[01;31m\]$(__git_ps1 "[%s]")\[\033[00m\]\[\033[97m\]\$ '
     else
-		PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+		#PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+		PS1='\[\033[00m\]\[\033[38;2;112;204;10m\]\u@\h\[\033[00m\]:\[\033[38;64;64;64m\]\w\[\033[00m\]\[\033[97m\]\$ '
 	fi
 else
 	if type __git_ps1 > /dev/null 2>&1 ; then
@@ -72,11 +74,13 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-ssh() {
-    export HOST=$1
-    /usr/bin/ssh $1
-}
-
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+#export PYENV_ROOT="$HOME/.pyenv"
+## Add pyenv root to PATH
+## and initialize pyenv
+#if [[ -d $PYENV_ROOT ]];then
+#    PATH="$PYENV_ROOT/bin:$PATH"
+#    # initialize pyenv
+#    eval "$(pyenv init -)"
+#    # initialize pyenv virtualenv
+#    eval "$(pyenv virtualenv-init -)"
+#fi
